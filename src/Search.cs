@@ -86,32 +86,30 @@ namespace Puffin
                beta = Math.Min(score + margin, INFINITY);
             }
 
-            try
+            while (true)
             {
-               while (true)
+               score = ThreadInfo.Score = NegaScout(alpha, beta, i, 0, false);
+
+               if (TimeManager.Stopped)
                {
-                  score = ThreadInfo.Score = NegaScout(alpha, beta, i, 0, false);
-
-                  if (score <= alpha)
-                  {
-                     alpha = Math.Max(score - margin, -INFINITY);
-                     beta = (alpha + beta) / 2;
-                  }
-                  else if (score >= beta)
-                  {
-                     beta = Math.Min(score + margin, INFINITY);
-                  }
-                  else
-                  {
-                     break;
-                  }
-
-                  margin += margin / 2;
+                  goto ReportBestMove;
                }
-            }
-            catch (TimeoutException)
-            {
-               break;
+
+               if (score <= alpha)
+               {
+                  alpha = Math.Max(score - margin, -INFINITY);
+                  beta = (alpha + beta) / 2;
+               }
+               else if (score >= beta)
+               {
+                  beta = Math.Min(score + margin, INFINITY);
+               }
+               else
+               {
+                  break;
+               }
+
+               margin += margin / 2;
             }
 
             if (mainThread)
@@ -121,10 +119,11 @@ namespace Puffin
 
             if (TimeManager.LimitReached(true, ThreadInfo.Nodes))
             {
-               break;
+               goto ReportBestMove;
             }
          }
 
+         ReportBestMove:
          if (mainThread)
          {
             Console.WriteLine($"bestmove {ThreadInfo.GetBestMove()}");
@@ -135,7 +134,7 @@ namespace Puffin
       {
          if ((ThreadInfo.Nodes & 2047) == 0 && TimeManager.LimitReached(false, ThreadInfo.Nodes))
          {
-            throw new TimeoutException();
+            return 0;
          }
 
          ThreadInfo.InitPvLength(ply);
@@ -390,7 +389,7 @@ namespace Puffin
       {
          if ((ThreadInfo.Nodes & 2047) == 0 && TimeManager.LimitReached(false, ThreadInfo.Nodes))
          {
-            throw new TimeoutException();
+            return 0;
          }
 
          if (ply >= MAX_PLY)
