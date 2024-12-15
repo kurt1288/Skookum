@@ -157,7 +157,7 @@ namespace Puffin
             return Quiescence(alpha, beta, ply, isPVNode);
          }
 
-         bool ttValid = TTable.GetEntry(Board.Hash, ply, out TTEntry entry);
+         bool ttValid = TTable.Probe(Board.Hash, ply, out TTEntry entry);
          ushort ttMove = ttValid ? entry.Move : (ushort)0;
 
          if (!isPVNode && !isRoot)
@@ -402,7 +402,7 @@ namespace Puffin
             return 0;
          }
 
-         bool ttValid = TTable.GetEntry(Board.Hash, ply, out TTEntry entry);
+         bool ttValid = TTable.Probe(Board.Hash, ply, out TTEntry entry);
          ushort ttMove = ttValid ? entry.Move : (ushort)0;
 
          if (!isPVNode)

@@ -1,4 +1,6 @@
-﻿using static Puffin.Constants;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using static Puffin.Constants;
 
 namespace Puffin
 {
@@ -50,9 +52,9 @@ namespace Puffin
          Array.Clear(Table);
       }
 
-      public readonly bool GetEntry(ulong hash, int ply, out TTEntry entry)
+      public readonly bool Probe(ulong hash, int ply, out TTEntry entry)
       {
-         ref TTEntry current = ref Table[hash % (ulong)Table.Length];
+         ref TTEntry current = ref GetEntry(hash);
 
          if (current.Hash != hash)
          {
@@ -79,7 +81,7 @@ namespace Puffin
 
       public readonly void SaveEntry(ulong hash, byte depth, int ply, ushort move, int score, HashFlag flag)
       {
-         ref TTEntry entry = ref Table[hash % (ulong)Table.Length];
+         ref TTEntry entry = ref GetEntry(hash);
 
          // Mate score adjustments
          if (score > MATE - MAX_PLY)
@@ -92,6 +94,12 @@ namespace Puffin
          }
 
          entry.Update(hash, depth, move, score, flag);
+      }
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining)]
+      private readonly ref TTEntry GetEntry(ulong hash)
+      {
+         return ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(Table), (int)(hash % (ulong)Table.Length));
       }
 
       /// <summary>
