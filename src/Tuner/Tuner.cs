@@ -9,7 +9,6 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Runtime;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Puffin.Constants;
@@ -19,9 +18,13 @@ namespace Puffin.Tuner
 {
    internal partial class Tuner
    {
+      const int ParameterCount = 507;
       const double Epsilon = 1e-7;
       const string PositionsFile = @"./datagen.epd";
       string ResultsPath = @$"./Tune_{DateTime.Now:yyyy-MM-dd,HHmmss}";
+
+      private readonly Dictionary<int, double> CoefficientPool = [];
+      private readonly List<CoefficientEntry> EntryPool = [];
 
       private class Trace
       {
@@ -145,7 +148,7 @@ namespace Puffin.Tuner
          }
       }
 
-      private class Entry
+      private struct Entry
       {
          public readonly List<CoefficientEntry> Coefficients;
          public readonly double Phase;
@@ -162,7 +165,7 @@ namespace Puffin.Tuner
       }
 
       // readonly Engine Engine;
-      private readonly ParameterWeight[] Parameters = new ParameterWeight[507];
+      private readonly ParameterWeight[] Parameters = new ParameterWeight[ParameterCount];
 
       public Tuner()
       {
@@ -472,20 +475,26 @@ namespace Puffin.Tuner
             string line = string.Empty;
             while ((line = sr.ReadLine()) != null)
             {
+               CoefficientPool.Clear();
+               EntryPool.Clear();
+
                board.SetPosition(line.Split("\"")[0].Trim());
 
                (Trace trace, double phase) = Evaluate(board);
 
-               entries[lines++] = new(GetCoefficientEntries(GetCoefficients(trace)), phase, GetEntryResult(line), line.Split("\"")[0].Trim());
+               GetCoefficients(trace);
+               GetCoefficientEntries();
+
+               entries[lines++] = new([.. EntryPool], phase, GetEntryResult(line), line.Split("\"")[0].Trim());
 
                Console.Write($"\rPositions loaded: {lines}/{totalLines} {100 * (long)lines / totalLines}% | {sw.Elapsed}");
 
                //Force garbage collection every 1 million lines. This seems to help with memory issues.
-               if (lines % 1000000 == 0)
-               {
-                  GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-                  GC.Collect();
-               }
+               //if (lines % 1000000 == 0)
+               //{
+               //   GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+               //   GC.Collect();
+               //}
             }
          }
 
@@ -837,69 +846,63 @@ namespace Puffin.Tuner
          return score;
       }
 
-      private Dictionary<int, double> GetCoefficients(Trace trace)
+      private void GetCoefficients(Trace trace)
       {
-         Dictionary<int, double> entryCoefficients = [];
-
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.material, 6);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.pst, 384);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.knightMobility, 9);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.bishopMobility, 14);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.rookMobility, 15);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.queenMobility, 28);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.rookHalfOpenFile);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.rookOpenFile);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.kingOpenFile);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.kingHalfOpenFile);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.kingAttackWeights, 5);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.pawnShield, 4);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.passedPawn, 7);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.defendedPawn, 8);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.connectedPawn, 9);
-         AddCoefficientsAndEntries(ref entryCoefficients, trace.isolatedPawn, 8);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.friendlyKingPawnDistance);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.enemyKingPawnDistance);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.bishopPair);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.pawnPushThreats);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.pawnAttacks);
-         AddSingleCoefficientAndEntry(ref entryCoefficients, trace.freeAdvancePawn);
-
-         return entryCoefficients;
+         AddCoefficientsAndEntries(trace.material, 6);
+         AddCoefficientsAndEntries(trace.pst, 384);
+         AddCoefficientsAndEntries(trace.knightMobility, 9);
+         AddCoefficientsAndEntries(trace.bishopMobility, 14);
+         AddCoefficientsAndEntries(trace.rookMobility, 15);
+         AddCoefficientsAndEntries(trace.queenMobility, 28);
+         AddSingleCoefficientAndEntry(trace.rookHalfOpenFile);
+         AddSingleCoefficientAndEntry(trace.rookOpenFile);
+         AddSingleCoefficientAndEntry(trace.kingOpenFile);
+         AddSingleCoefficientAndEntry(trace.kingHalfOpenFile);
+         AddCoefficientsAndEntries(trace.kingAttackWeights, 5);
+         AddCoefficientsAndEntries(trace.pawnShield, 4);
+         AddCoefficientsAndEntries(trace.passedPawn, 7);
+         AddCoefficientsAndEntries(trace.defendedPawn, 8);
+         AddCoefficientsAndEntries(trace.connectedPawn, 9);
+         AddCoefficientsAndEntries(trace.isolatedPawn, 8);
+         AddSingleCoefficientAndEntry(trace.friendlyKingPawnDistance);
+         AddSingleCoefficientAndEntry(trace.enemyKingPawnDistance);
+         AddSingleCoefficientAndEntry(trace.bishopPair);
+         AddSingleCoefficientAndEntry(trace.pawnPushThreats);
+         AddSingleCoefficientAndEntry(trace.pawnAttacks);
+         AddSingleCoefficientAndEntry(trace.freeAdvancePawn);
       }
 
-      private void AddSingleCoefficientAndEntry(ref Dictionary<int, double> entryCoefficients, double[] trace)
+      private void AddSingleCoefficientAndEntry(double[] trace)
       {
-         entryCoefficients.Add(entryCoefficients.Count, trace[0] - trace[1]);
+         CoefficientPool.Add(CoefficientPool.Count, trace[0] - trace[1]);
       }
 
-      private void AddCoefficientsAndEntries(ref Dictionary<int, double> entryCoefficients, double[][] trace, int size)
+      private void AddCoefficientsAndEntries( double[][] trace, int size)
       {
          for (int i = 0; i < size; i++)
          {
-            AddSingleCoefficientAndEntry(ref entryCoefficients, trace[i]);
+            AddSingleCoefficientAndEntry(trace[i]);
          }
       }
 
-      private List<CoefficientEntry> GetCoefficientEntries(Dictionary<int, double> coefficients)
+      private List<CoefficientEntry> GetCoefficientEntries()
       {
-         List<CoefficientEntry> coefficientEntries = [];
-
-         if (coefficients.Count != Parameters.Length)
+         if (CoefficientPool.Count != Parameters.Length)
          {
             throw new Exception("Counts of coefficients and parameters don't match");
          }
 
-         for (int i = 0; i < coefficients.Count(); i++)
+         for (int i = 0; i < CoefficientPool.Count; i++)
          {
-            if (coefficients[i] == 0)
+            if (CoefficientPool[i] == 0)
             {
                continue;
             }
 
-            coefficientEntries.Add(new CoefficientEntry(coefficients[i], i));
+            EntryPool.Add(new CoefficientEntry(CoefficientPool[i], i));
          }
 
-         return coefficientEntries;
+         return EntryPool;
       }
 
       private double Sigmoid(double factor, double score)

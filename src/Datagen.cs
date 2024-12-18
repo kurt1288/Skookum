@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Text;
 using static Puffin.Constants;
@@ -175,7 +176,10 @@ namespace Puffin
 
                if (gamesCompleted % 10 == 0)
                {
-                  Console.WriteLine($"Games: {gamesCompleted}. FENs: {totalPositions}. F/s: {1000 * (long)totalPositions / sw.ElapsedMilliseconds}. Total time: {sw.Elapsed:hh\\:mm\\:ss}. Estimated time remaining: {TimeSpan.FromMilliseconds((maxPositions - totalPositions) * (sw.ElapsedMilliseconds / totalPositions)):d\\.hh\\:mm\\:ss}");
+                  double elapsedMilliseconds = sw.ElapsedMilliseconds;
+                  double estimatedTotalTime = elapsedMilliseconds / ((double)totalPositions / maxPositions);
+                  double remainingMilliseconds = estimatedTotalTime - elapsedMilliseconds;
+                  Console.WriteLine($"Games: {gamesCompleted}. FENs: {totalPositions}. F/s: {1000 * (long)totalPositions / sw.ElapsedMilliseconds}. Total time: {sw.Elapsed:hh\\:mm\\:ss}. Estimated time remaining: {TimeSpan.FromMilliseconds(remainingMilliseconds):d\\.hh\\:mm\\:ss}");
                }
             }
             catch (TimeoutException ex)
