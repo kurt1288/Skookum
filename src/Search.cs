@@ -1,13 +1,17 @@
-﻿using static Puffin.Constants;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
+using static Puffin.Constants;
 
 namespace Puffin
 {
-   internal class Search(Board board, TimeManager time, ref TranspositionTable tTable, SearchInfo info, ThreadManager manager)
+   internal class Search(Board board, TimeManager time, ref TranspositionTable tTable, SearchInfo info)
    {
+      // NOT THREAD-SAFE (but works well enough for now)
+      private static int Nodes = 0;
+
       private readonly Board Board = board;
       private readonly TimeManager TimeManager = time;
       private TranspositionTable TTable = tTable;
-      private readonly ThreadManager ThreadManager = manager;
 
       public SearchInfo ThreadInfo { get; } = info;
 
@@ -49,25 +53,36 @@ namespace Puffin
       public static int IIR_Min_Depth { get; set; } = 5;
       #endregion
 
-      static string FormatScore(int score)
+      private void PrintInfo(int depth)
       {
-         if (score < -MATE + MAX_PLY)
-         {
-            return $"mate {(-MATE - score) / 2}";
-         }
-         else if (score > MATE - MAX_PLY)
-         {
-            return $"mate {(MATE - score + 1) / 2}";
-         }
-         else
-         {
-            return $"cp {score}";
-         }
+         int nodes = Nodes;
+         long elapsedMs = TimeManager.GetElapsedMs();
+         int score = ThreadInfo.Score;
+
+         string scoreStr = score < -MATE + MAX_PLY ? $"mate {(-MATE - score) / 2}" : score > MATE - MAX_PLY ? $"mate {(MATE - score + 1) / 2}" : $"cp {score}";
+
+         StringBuilder sb = new();
+         sb.Append($"info depth {depth} ");
+         sb.Append($"score {scoreStr} ");
+         sb.Append($"nodes {nodes} ");
+         sb.Append($"nps {Math.Round((double)(1000 * nodes / Math.Max(elapsedMs, 1)), 0)} ");
+         sb.Append($"hashfull {TTable.GetUsed()} ");
+         sb.Append($"time {elapsedMs} ");
+         sb.Append($"pv {ThreadInfo.GetPv()} ");
+
+         Console.WriteLine(sb.ToString());
+      }
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining)]
+      public static int GetTotalNodes()
+      {
+         return Nodes;
       }
 
       public void Run()
       {
          ThreadInfo.ResetForSearch();
+         Nodes = 0;
 
          int alpha = -INFINITY;
          int beta = INFINITY;
@@ -114,10 +129,10 @@ namespace Puffin
 
             if (mainThread)
             {
-               Console.WriteLine($@"info depth {i} score {FormatScore(score)} nodes {ThreadManager.GetTotalNodes()} nps {Math.Round((double)(ThreadManager.GetTotalNodes() / Math.Max(TimeManager.GetElapsedMs(), 1)), 0)} hashfull {TTable.GetUsed()} time {TimeManager.GetElapsedMs()} pv {ThreadInfo.GetPv()}");
+               PrintInfo(i);
             }
 
-            if (TimeManager.LimitReached(true, ThreadInfo.Nodes))
+            if (TimeManager.LimitReached(true, Nodes))
             {
                goto ReportBestMove;
             }
@@ -132,7 +147,7 @@ namespace Puffin
 
       private int NegaScout(int alpha, int beta, int depth, int ply, bool doNull)
       {
-         if ((ThreadInfo.Nodes & 2047) == 0 && TimeManager.LimitReached(false, ThreadInfo.Nodes))
+         if ((Nodes & 2047) == 0 && TimeManager.LimitReached(false, Nodes))
          {
             return 0;
          }
@@ -255,7 +270,7 @@ namespace Puffin
             }
 
             Board.MoveStack[ply] = (move, Board.Squares[move.To]);
-            ThreadInfo.Nodes += 1;
+            Nodes += 1;
             legalMoves += 1;
 
             if (isQuiet && quietMovesCount < 100)
@@ -387,7 +402,7 @@ namespace Puffin
 
       private int Quiescence(int alpha, int beta, int ply, bool isPVNode)
       {
-         if ((ThreadInfo.Nodes & 2047) == 0 && TimeManager.LimitReached(false, ThreadInfo.Nodes))
+         if ((Nodes & 2047) == 0 && TimeManager.LimitReached(false, Nodes))
          {
             return 0;
          }
@@ -452,7 +467,7 @@ namespace Puffin
             }
 
             Board.MoveStack[ply] = (move, Board.Squares[move.To]);
-            ThreadInfo.Nodes += 1;
+            Nodes += 1;
 
             int score = -Quiescence(-beta, -alpha, ply + 1, isPVNode);
 

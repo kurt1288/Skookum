@@ -15,7 +15,6 @@ namespace Puffin
          Board board = new();
          TranspositionTable table = new();
          SearchInfo searchInfo = new();
-         ThreadManager threadManager = new(1, ref table);
          Stopwatch sw = new();
 
          foreach (string line in lines)
@@ -26,9 +25,9 @@ namespace Puffin
 
             board.SetPosition(line);
             sw.Restart();
-            Search search = new(board, Timer, ref table, searchInfo, threadManager);
+            Search search = new(board, Timer, ref table, searchInfo);
             search.Run();
-            totalNodes += searchInfo.Nodes;
+            totalNodes += Search.GetTotalNodes();
             totalMs += sw.ElapsedMilliseconds;
          }
 

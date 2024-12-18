@@ -137,7 +137,7 @@ namespace Puffin
          TimeManager timeManager = new();
          Position position = new();
          SearchInfo info = new();
-         Search search = new(board, timeManager, ref table, info, new(1, ref table));
+         Search search = new(board, timeManager, ref table, info);
          using StreamWriter writer = new(Path.Combine(folderPath, @$"./{Thread.CurrentThread.Name}.epd"), true);
 
          while (totalPositions < maxPositions && !cancellationToken.IsCancellationRequested)

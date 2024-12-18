@@ -6,10 +6,9 @@ namespace Puffin
    {
       private readonly Thread[] Threads;
       private readonly SearchInfo[] Infos;
-      private readonly BlockingCollection<SearchTask> SearchQueue;
+      private readonly BlockingCollection<Search> SearchQueue;
       private volatile bool IsRunning = true;
       private TranspositionTable tTable;
-      private readonly ConcurrentBag<Search> ActiveSearches;
       private readonly int ThreadCount;
 
       public ThreadManager(int threadCount, ref TranspositionTable tTable)
@@ -19,14 +18,13 @@ namespace Puffin
          Infos = new SearchInfo[threadCount];
          SearchQueue = [];
          this.tTable = tTable;
-         ActiveSearches = [];
 
          for (int i = 0; i < threadCount; i++)
          {
             Infos[i] = new SearchInfo();
             int threadIndex = i;
 
-            Threads[i] = new Thread(() => ThreadWork(threadIndex))
+            Threads[i] = new Thread(ThreadWork)
             {
                IsBackground = true,
                Name = $"Thread {i}"
@@ -36,35 +34,25 @@ namespace Puffin
          }
       }
 
-      private void ThreadWork(int threadIndex)
+      private void ThreadWork()
       {
          while (IsRunning)
          {
-            if (SearchQueue.TryTake(out SearchTask task, Timeout.Infinite))
+            if (SearchQueue.TryTake(out Search task, Timeout.Infinite))
             {
-               Search search = new((Board)task.Board.Clone(), task.Time, ref tTable, Infos[threadIndex], this);
-               ActiveSearches.Add(search);
-               search.Run();
-               ActiveSearches.TryTake(out _);
-               task.CompletionSource.SetResult(true);
+               task.Run();
             }
          }
       }
 
-      public Task[] StartSearches(TimeManager time, Board board)
+      public void StartSearches(TimeManager time, Board board)
       {
          time.Start();
-         var tasks = new Task[ThreadCount];
 
          for (int i = 0; i < ThreadCount; i++)
          {
-            TaskCompletionSource<bool> completionSource = new();
-            SearchTask searchTask = new((Board)board.Clone(), time, completionSource);
-            SearchQueue.Add(searchTask);
-            tasks[i] = completionSource.Task;
+            SearchQueue.Add(new((Board)board.Clone(), time, ref tTable, Infos[i]));
          }
-
-         return tasks;
       }
 
       public void Shutdown()
@@ -84,18 +72,6 @@ namespace Puffin
          {
             Infos[i].ResetAll();
          }
-      }
-
-      public int GetTotalNodes()
-      {
-         return ActiveSearches.Sum(s => s.ThreadInfo.Nodes);
-      }
-
-      private class SearchTask(Board board, TimeManager time, TaskCompletionSource<bool> completionSource)
-      {
-         public Board Board { get; } = board;
-         public TimeManager Time { get; } = time;
-         public TaskCompletionSource<bool> CompletionSource { get; } = completionSource;
       }
    }
 }

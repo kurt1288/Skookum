@@ -13,7 +13,6 @@ namespace Puffin
 
       public int[] EvalStack { get; set; } = new int[MAX_PLY]; 
       public Move[][] KillerMoves { get; set; } = new Move[MAX_PLY][];
-      public int Nodes { get; set; } = 0;
       public int Score { get; set; } = -INFINITY;
 
       public SearchInfo()
@@ -32,7 +31,6 @@ namespace Puffin
          Array.Clear(PvLength);
          Array.Clear(CounterMoves);
          Array.Clear(EvalStack);
-         Nodes = 0;
          Score = -INFINITY;
 
          for (int i = 0; i < MAX_PLY; i++)
@@ -45,7 +43,6 @@ namespace Puffin
       public void ResetForSearch()
       {
          Array.Clear(PvLength);
-         Nodes = 0;
          Score = -INFINITY;
 
          for (int i = 0; i < MAX_PLY; i++)
