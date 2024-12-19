@@ -158,7 +158,7 @@ namespace Puffin
 
                string[] fens = position.FENS;
                Random.Shared.Shuffle(fens);
-               int total = (int)(fens.Length * percentage);
+               int total = (int)(position.Count * percentage);
                Interlocked.Add(ref totalPositions, total);
                int count = 0;
 
