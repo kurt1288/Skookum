@@ -8,7 +8,7 @@ namespace Puffin
    internal class Datagen(CancellationToken cancellationToken)
    {
       const int MAX_DEPTH = 10;
-      const int MAX_NODES = 8000;
+      const int MAX_NODES = 20000;
       const double PERCENT_POSTIIONS_FROM_GAME = 0.2;
       const double PERCENT_POSTIIONS_FROM_DRAW_GAME = 0.1;
       static int gamesCompleted = 0;
@@ -139,26 +139,27 @@ namespace Puffin
          Position position = new();
          SearchInfo info = new();
          Search search = new(board, timeManager, ref table, info);
+         MoveList moveList = new();
          using StreamWriter writer = new(Path.Combine(folderPath, @$"./{Thread.CurrentThread.Name}.epd"), true);
 
          while (totalPositions < maxPositions && !cancellationToken.IsCancellationRequested)
          {
-            using CancellationTokenSource gameTimeout = new(TimeSpan.FromMinutes(1)); // Games shouldn't take more than a minute. If they do, forcefully end them.
+            using CancellationTokenSource gameTimeout = new(TimeSpan.FromMinutes(2)); // Don't let games last longer than X minutes
             using CancellationTokenSource combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, gameTimeout.Token);
 
             try
             {
-               GeneratePositions(board, timeManager, table, info, search, combinedCts, position);
+               GeneratePositions(board, moveList, timeManager, table, info, search, combinedCts, position);
 
                // To cut down on the number of draw positions, take half as many positions from drawn games
                // This keeps the overall draw positions to around 20-25% of the total
-               double percentage = position.WDL == 0.5 ? PERCENT_POSTIIONS_FROM_DRAW_GAME : PERCENT_POSTIIONS_FROM_GAME;
+               //double percentage = position.WDL == 0.5 ? PERCENT_POSTIIONS_FROM_DRAW_GAME : PERCENT_POSTIIONS_FROM_GAME;
 
                Interlocked.Increment(ref gamesCompleted);
 
                string[] fens = position.FENS;
                Random.Shared.Shuffle(fens);
-               int total = (int)(position.Count * percentage);
+               int total = 10; // (int)(position.Count * percentage);
                Interlocked.Add(ref totalPositions, total);
                int count = 0;
 
@@ -197,10 +198,10 @@ namespace Puffin
          }
       }
 
-      private static void GeneratePositions(Board board, TimeManager timeManager, TranspositionTable table, SearchInfo info, Search search, CancellationTokenSource cts, Position positions)
+      private static void GeneratePositions(Board board, MoveList moveList, TimeManager timeManager, TranspositionTable table, SearchInfo info, Search search, CancellationTokenSource cts, Position positions)
       {
+         moveList.Reset();
          positions.Reset();
-         MoveList moveList = new();
 
          while (true)
          {
@@ -266,7 +267,7 @@ namespace Puffin
             {
                positions.WDL = info.Score > 0 ? (int)board.SideToMove ^ 1 : (int)board.SideToMove;
             }
-            else if (board.History.Count > 40 && board.Halfmoves > 5 && (info.Score is >= -10 and <= 10))
+            else if (board.History.Count > 100 && board.Halfmoves > 10 && (info.Score is >= -10 and <= 10))
             {
                positions.WDL = 0.5;
             }
@@ -277,7 +278,6 @@ namespace Puffin
             if (board.IsThreefold() || board.Halfmoves >= 100 || board.IsDrawn())
             {
                positions.WDL = 0.5;
-               break;
             }
 
             bool skipFEN =
@@ -300,7 +300,8 @@ namespace Puffin
 
       private static bool GetRandomPosition(Board board, MoveList moveList, CancellationTokenSource cts)
       {
-         int total = 8 + (Random.Shared.Next(0, 2) % 2);
+         // Play 6-9 moves to set the game's starting position
+         int total = Random.Shared.Next(6, 10);
          bool foundMove = false;
 
          // Play 8 or 9 random moves
@@ -322,7 +323,8 @@ namespace Puffin
                Move move = moveList[j];
 
                // because the moves array is intiailized with default move values (0), after shuffling some of those null moves might be at the beginning
-               if (move == 0)
+               // also, don't move the king in the first couple moves
+               if (move == 0 || (board.Squares[move.From].Type == PieceType.King))
                {
                   continue;
                }
