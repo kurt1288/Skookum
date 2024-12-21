@@ -173,17 +173,29 @@ namespace Puffin
          }
 
          bool ttValid = TTable.Probe(Board.Hash, ply, out TTEntry entry);
-         ushort ttMove = ttValid ? entry.Move : (ushort)0;
+         ushort ttMove = 0;
 
-         if (!isPVNode && !isRoot)
+         if (ttValid)
          {
-            if (ttValid && entry.Depth >= depth
-               && (entry.Flag == HashFlag.Exact
-               || entry.Flag == HashFlag.Beta && entry.Score >= beta
-               || entry.Flag == HashFlag.Alpha && entry.Score <= alpha
-               ))
+            ttMove = entry.Move;
+
+            if (!isPVNode && entry.Depth >= depth)
             {
-               return entry.Score;
+               switch (entry.Flag)
+               {
+                  case HashFlag.Exact:
+                     {
+                        return entry.Score;
+                     }
+                  case HashFlag.Beta when entry.Score >= beta:
+                     {
+                        return entry.Score;
+                     }
+                  case HashFlag.Alpha when entry.Score <= alpha:
+                     {
+                        return entry.Score;
+                     }
+               }
             }
          }
 
@@ -385,14 +397,7 @@ namespace Puffin
 
          if (legalMoves == 0)
          {
-            if (inCheck)
-            {
-               return -MATE + ply;
-            }
-            else
-            {
-               return 0;
-            }
+            return inCheck ? -MATE + ply : 0;
          }
 
          TTable.SaveEntry(Board.Hash, (byte)depth, ply, bestMove.GetEncoded(), bestScore, flag);
@@ -418,17 +423,29 @@ namespace Puffin
          }
 
          bool ttValid = TTable.Probe(Board.Hash, ply, out TTEntry entry);
-         ushort ttMove = ttValid ? entry.Move : (ushort)0;
+         ushort ttMove = 0;
 
-         if (!isPVNode)
+         if (ttValid)
          {
-            if (ttValid
-               && (entry.Flag == HashFlag.Exact
-               || entry.Flag == HashFlag.Beta && entry.Score >= beta
-               || entry.Flag == HashFlag.Alpha && entry.Score <= alpha
-               ))
+            ttMove = entry.Move;
+
+            if (!isPVNode)
             {
-               return entry.Score;
+               switch (entry.Flag)
+               {
+                  case HashFlag.Exact:
+                     {
+                        return entry.Score;
+                     }
+                  case HashFlag.Beta when entry.Score >= beta:
+                     {
+                        return entry.Score;
+                     }
+                  case HashFlag.Alpha when entry.Score <= alpha:
+                     {
+                        return entry.Score;
+                     }
+               }
             }
          }
 
