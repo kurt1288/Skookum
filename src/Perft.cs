@@ -17,7 +17,9 @@ namespace Puffin
          stopWatch.Start();
 
          ulong totalNodes = 0;
-         MoveList moves = MoveGen.GenerateAll(Board);
+         Span<(Move, int)> moveBuffer = stackalloc (Move, int)[218];
+         MoveList moves = new(moveBuffer);
+         MoveGen.GenerateAll(Board, ref moves);
 
          for (int i = 0; i < moves.Count; i++)
          {
@@ -59,7 +61,9 @@ namespace Puffin
             return 1;
          }
 
-         MoveList moves = MoveGen.GenerateAll(Board);
+         Span<(Move, int)> moveBuffer = stackalloc (Move, int)[218];
+         MoveList moves = new(moveBuffer);
+         MoveGen.GenerateAll(Board, ref moves);
 
          for (int i = 0; i < moves.Count; i++)
          {

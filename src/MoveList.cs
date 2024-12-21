@@ -2,33 +2,33 @@
 
 namespace Puffin
 {
-   internal class MoveList()
+   internal ref struct MoveList(Span<(Move, int)> moves)
    {
-      private readonly (Move Move, int Score)[] Moves = new (Move, int)[218];
+      private readonly Span<(Move Move, int Score)> Moves = moves;
 
       public int Count { get; private set; } = 0;
 
-      public ref readonly Move this[int index]
+      public readonly ref readonly Move this[int index]
       {
          get => ref Moves[index].Move;
       }
 
-      public void Shuffle(Random rnd)
+      public readonly void Shuffle(Random rnd)
       {
          rnd.Shuffle(Moves);
       }
 
       [MethodImpl(MethodImplOptions.AggressiveInlining)]
-      public int GetScore(int index) => Moves[index].Score;
+      public readonly int GetScore(int index) => Moves[index].Score;
       [MethodImpl(MethodImplOptions.AggressiveInlining)]
-      public void SetScore(int index, int score) => Moves[index].Score = score;
+      public readonly void SetScore(int index, int score) => Moves[index].Score = score;
       [MethodImpl(MethodImplOptions.AggressiveInlining)]
       public void Add(Move move) => Moves[Count++] = (move, 0);
-      public void Add(Move move, int score, int index) => Moves[index] = (move, score);
+      public readonly void Add(Move move, int score, int index) => Moves[index] = (move, score);
 
       public void RemoveAt(int index)
       {
-         Array.Copy(Moves, index + 1, Moves, index, Moves.Length - index - 1);
+         Moves.Slice(index + 1, Moves.Length - index - 1).CopyTo(Moves[index..]);
          Count--;
       }
 
@@ -42,11 +42,11 @@ namespace Puffin
       /// </summary>
       public void Reset()
       {
-         Array.Clear(Moves, 0, Moves.Length);
+         Moves.Clear();
          Count = 0;
       }
 
-      public void SwapMoves(int index1, int index2)
+      public readonly void SwapMoves(int index1, int index2)
       {
          var temp = Moves[index1];
          Moves[index1] = Moves[index2];

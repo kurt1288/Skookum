@@ -39,6 +39,8 @@ namespace Puffin
 
       public static int SEE_Quiet_Threshold { get; set; } = -40;
 
+      public static int QS_SEE_MARGIN { get; set; } = -50;
+
       #endregion
 
       #region Non-SPSA Parameters (Depth and Move Thresholds)
@@ -248,9 +250,11 @@ namespace Puffin
             depth--;
          }
 
+         Span<(Move, int)> moveBuffer = stackalloc (Move, int)[218];
+         MoveList list = new(moveBuffer);
          MovePicker moves = new(Board, ThreadInfo, ply, new(ttMove), false);
 
-         while (moves.Next() is Move move)
+         while (moves.Next(ref list) is Move move)
          {
             bool isQuiet = !move.HasType(MoveType.Capture) && !move.HasType(MoveType.Promotion);
 
@@ -462,9 +466,11 @@ namespace Puffin
 
          Move bestMove = new();
          HashFlag flag = HashFlag.Alpha;
+         Span<(Move, int)> moveBuffer = stackalloc (Move, int)[218];
+         MoveList list = new(moveBuffer);
          MovePicker moves = new(Board, ThreadInfo, ply, new(ttMove), true);
 
-         while (moves.Next() is Move move)
+         while (moves.Next(ref list) is Move move)
          {
             // Delta pruning
             if (((move.HasType(MoveType.Promotion) ? 1 : 0) * Evaluation.GetPieceValue(PieceType.Queen, Board)) + bestScore + Evaluation.GetPieceValue(Board.Squares[move.To].Type, Board) + 200 < alpha)
@@ -472,7 +478,7 @@ namespace Puffin
                continue;
             }
 
-            if (!Board.SEE_GE(move, -50))
+            if (!Board.SEE_GE(move, QS_SEE_MARGIN))
             {
                continue;
             }

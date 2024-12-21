@@ -6,19 +6,16 @@ namespace Puffin
 {
    internal sealed class MoveGen
    {
-      public static MoveList GenerateAll(Board board)
+      public static void GenerateAll(Board board, ref MoveList list)
       {
-         MoveList moveList = new();
-         GenerateQuiet(moveList, board);
-         GenerateNoisy(moveList, board);
-
-         return moveList;
+         GenerateQuiet(ref list, board);
+         GenerateNoisy(ref list, board);
       }
 
-      public static void GenerateQuiet(MoveList moveList, Board board)
+      public static void GenerateQuiet(ref MoveList moveList, Board board)
       {
-         GeneratePawnPushes(moveList, board);
-         GenerateCastling(moveList, board);
+         GeneratePawnPushes(ref moveList, board);
+         GenerateCastling(ref moveList, board);
 
          ulong occupied = board.ColorBoard(Color.Both).Value;
          Bitboard nonPawns = board.ColorBoard(board.SideToMove) & ~board.PieceBoard((int)PieceType.Pawn).Value;
@@ -47,11 +44,11 @@ namespace Puffin
          }
       }
 
-      public static void GenerateNoisy(MoveList moveList, Board board)
+      public static void GenerateNoisy(ref MoveList moveList, Board board)
       {
-         GeneratePawnAttacks(moveList, board);
-         GenerateEnPassant(moveList, board);
-         GeneratePawnPromotions(moveList, board);
+         GeneratePawnAttacks(ref moveList, board);
+         GenerateEnPassant(ref moveList, board);
+         GeneratePawnPromotions(ref moveList, board);
 
          ulong occupied = board.ColorBoard(Color.Both).Value;
          Bitboard nonPawns = board.ColorBoard(board.SideToMove) & ~board.PieceBoard((int)PieceType.Pawn).Value;
@@ -81,7 +78,7 @@ namespace Puffin
       }
 
       // Only generates QUIET pawn moves (no promotions, attacks, en passant, etc.)
-      public static void GeneratePawnPushes(MoveList moveList, Board board)
+      public static void GeneratePawnPushes(ref MoveList moveList, Board board)
       {
          ulong pawns = board.ColorPieceBB(board.SideToMove, PieceType.Pawn).Value;
          ulong empty = ~board.ColorBoard(Color.Both).Value;
@@ -103,7 +100,7 @@ namespace Puffin
          }
       }
 
-      public static void GeneratePawnAttacks(MoveList moveList, Board board)
+      public static void GeneratePawnAttacks(ref MoveList moveList, Board board)
       {
          ulong pawns = board.ColorPieceBB(board.SideToMove, PieceType.Pawn).Value;
          Bitboard rightTargets = new((pawns & ~FILE_MASKS[(int)File.H]) >> 7);
@@ -162,7 +159,7 @@ namespace Puffin
       }
 
       // Pawn pushes to promotions (no attacks)
-      public static void GeneratePawnPromotions(MoveList moveList, Board board)
+      public static void GeneratePawnPromotions(ref MoveList moveList, Board board)
       {
          ulong pawns = board.ColorPieceBB(board.SideToMove, PieceType.Pawn).Value;
          ulong empty = ~board.ColorBoard(Color.Both).Value;
@@ -187,7 +184,7 @@ namespace Puffin
          }
       }
 
-      public static void GenerateEnPassant(MoveList moveList, Board board)
+      public static void GenerateEnPassant(ref MoveList moveList, Board board)
       {
          Bitboard attackers = board.EnPassant != Square.Null
             ? new(PawnAttacks[(int)board.SideToMove ^ 1][(int)board.EnPassant]
@@ -202,7 +199,7 @@ namespace Puffin
          }
       }
 
-      public static void GenerateCastling(MoveList moveList, Board board)
+      public static void GenerateCastling(ref MoveList moveList, Board board)
       {
          Bitboard rookSquares = new(board.CastleSquares & (board.SideToMove == Color.White ? RANK_MASKS[(int)Rank.Rank_1] : RANK_MASKS[(int)Rank.Rank_8]));
 

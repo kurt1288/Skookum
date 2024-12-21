@@ -739,8 +739,9 @@ namespace Puffin
                 (piece.Color == Color.White ? (int)Square.C1 : (int)Square.C8) + 1;
 
 #if DEBUG
-            MoveList castleMoves = new();
-            MoveGen.GenerateCastling(castleMoves, this);
+            Span<(Move, int)> buffer = stackalloc (Move, int)[218];
+            MoveList castleMoves = new(buffer);
+            MoveGen.GenerateCastling(ref castleMoves, this);
             bool foundCastle = false;
             for (int i = 0; i < castleMoves.Count; i++)
             {
@@ -775,7 +776,9 @@ namespace Puffin
          };
 
 #if DEBUG
-         MoveList moveGen = MoveGen.GenerateAll(this);
+         Span<(Move, int)> moveBuffer = stackalloc (Move, int)[218];
+         MoveList moveGen = new(moveBuffer);
+         MoveGen.GenerateAll(this, ref moveGen);
          bool found = false;
          for (int i = 0; i < moveGen.Count; i++)
          {

@@ -309,8 +309,8 @@ namespace Puffin
          {
             foundMove = false;
             moveList.Reset();
-            MoveGen.GenerateQuiet(moveList, board);
-            MoveGen.GenerateNoisy(moveList, board);
+            MoveGen.GenerateQuiet(ref moveList, board);
+            MoveGen.GenerateNoisy(ref moveList, board);
             moveList.Shuffle(Random.Shared);
 
             for (int j = 0; j < 218; j++) // 218 is the max length for the moves array
@@ -396,7 +396,9 @@ namespace Puffin
       
       private static bool IsMate(Board board)
       {
-         MoveList moves = MoveGen.GenerateAll(board);
+         Span<(Move, int)> moveBuffer = stackalloc (Move, int)[218];
+         MoveList moves = new(moveBuffer);
+         MoveGen.GenerateAll(board, ref moves);
 
          for (int i = 0; i < moves.Count; i++)
          {

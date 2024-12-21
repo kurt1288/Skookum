@@ -17,7 +17,6 @@ namespace Puffin
 
    internal sealed class MovePicker(Board board, SearchInfo info, int ply, Move hashMove, bool noisyOnly)
    {
-      private readonly MoveList MoveList = new();
       private readonly Board Board = board;
       private readonly Move HashMove = hashMove;
       private readonly Move CounterMove = ply > 0 ? info.GetCountermove(board.MoveStack[ply - 1].Move) : default;
@@ -29,7 +28,7 @@ namespace Puffin
       public bool NoisyOnly { get; set; } = noisyOnly;
       public Stage Stage { get; private set; } = Stage.HashMove;
 
-      public Move? Next()
+      public Move? Next(ref MoveList MoveList)
       {
          switch (Stage)
          {
@@ -46,8 +45,8 @@ namespace Puffin
                }
             case Stage.GenNoisy:
                {
-                  MoveGen.GenerateNoisy(MoveList, Board);
-                  ScoreNoisyMoves(MoveList);
+                  MoveGen.GenerateNoisy(ref MoveList, Board);
+                  ScoreNoisyMoves(ref MoveList);
                   Stage++;
                   goto case Stage.Noisy;
                }
@@ -55,7 +54,7 @@ namespace Puffin
                {
                   while (Index < MoveList.Count)
                   {
-                     Move move = NextMove(MoveList, Index++);
+                     Move move = NextMove(ref MoveList, Index++);
 
                      if (!Board.SEE_GE(move, 0))
                      {
@@ -106,8 +105,8 @@ namespace Puffin
                {
                   if (!NoisyOnly)
                   {
-                     MoveGen.GenerateQuiet(MoveList, Board);
-                     ScoreQuietMoves(MoveList);
+                     MoveGen.GenerateQuiet(ref MoveList, Board);
+                     ScoreQuietMoves(ref MoveList);
                   }
                   
                   Stage++;
@@ -117,7 +116,7 @@ namespace Puffin
                {
                   if (!NoisyOnly && Index < MoveList.Count)
                   {
-                     return NextMove(MoveList, Index++);
+                     return NextMove(ref MoveList, Index++);
                   }
 
                   Stage++;
@@ -146,7 +145,7 @@ namespace Puffin
          }
       }
 
-      public static Move NextMove(MoveList list, int index)
+      public static Move NextMove(ref MoveList list, int index)
       {
          // Selection sort
          int best = index;
@@ -164,7 +163,7 @@ namespace Puffin
          return list[index];
       }
 
-      private void ScoreNoisyMoves(MoveList moves)
+      private void ScoreNoisyMoves(ref MoveList moves)
       {
          for (int i = moves.Count - 1; i >= 0; i--)
          {
@@ -186,7 +185,7 @@ namespace Puffin
          }
       }
 
-      private void ScoreQuietMoves(MoveList moves)
+      private void ScoreQuietMoves(ref MoveList moves)
       {
          for (int i = moves.Count - 1; i >= 0; i--)
          {
